@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MGN Analyser — Interactive Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy:      #0d2137;
+    --navy2:     #1a3a5c;
+    --accent:    #2a7abf;
+    --accent2:   #1b9e8a;
+    --gen:       #1e6fa8;
+    --gen-light: #d6eaf8;
+    --trans:     #0e8a7a;
+    --trans-light:#d5f5ee;
+    --meta:      #7b3fa0;
+    --meta-light:#ede0f7;
+    --dark-btn:  #0d2d4a;
+    --bg:        #eef2f7;
+    --card:      #ffffff;
+    --text:      #1a2a3a;
+    --muted:     #5a7080;
+    --border:    #c8d8e8;
+    --shadow:    0 4px 20px rgba(13,33,55,0.13);
+    --shadow-lg: 0 8px 40px rgba(13,33,55,0.18);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+    padding: 0 36px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    height: 110px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse at 80% 50%, rgba(42,122,191,0.18) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .header-logo {
+    width: 90px; height: 90px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .header-logo svg { width:100%; height:100%; }
+  .header-text h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .header-text p {
+    font-size: 0.95rem;
+    color: #8ec8f8;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+    margin-top: 3px;
+  }
+
+  /* ── NAV BAR ── */
+  nav {
+    background: var(--navy2);
+    display: flex;
+    align-items: center;
+    padding: 0 36px;
+    gap: 0;
+    border-bottom: 3px solid var(--accent);
+  }
+  nav a {
+    color: #c8dff0;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.02rem;
+    padding: 14px 28px;
+    letter-spacing: 0.3px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    transition: background 0.2s, color 0.2s;
+    cursor: pointer;
+  }
+  nav a:first-child { border-left: 1px solid rgba(255,255,255,0.08); }
+  nav a:hover, nav a.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  nav a.pipeline-tab {
+    margin-left: auto;
+    border-left: 2px solid var(--accent);
+    color: #7fc8ff;
+    background: rgba(42,122,191,0.15);
+  }
+  nav a.pipeline-tab:hover { background: var(--accent); color:#fff; }
+
+  /* ── MAIN CONTENT ── */
+  main {
+    flex: 1;
+    padding: 36px 40px 24px;
+    overflow-y: auto;
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content:''; flex:1; height:1px; background: var(--border);
+  }
+
+  /* ── PIPELINE CANVAS ── */
+  .pipeline-canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+  }
+
+  /* ── NODES ── */
+  .node {
+    border-radius: 12px;
+    padding: 14px 32px;
+    font-weight: 700;
+    font-size: 1.08rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+    position: relative;
+    user-select: none;
+  }
+  .node:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: var(--shadow-lg);
+    filter: brightness(1.08);
+  }
+  .node.dark {
+    background: var(--dark-btn);
+    color: #fff;
+    box-shadow: var(--shadow);
+    border: 2px solid rgba(42,122,191,0.4);
+  }
+  .node.dark:hover { border-color: var(--accent); }
+  .node.light {
+    background: var(--card);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    border: 2px solid var(--border);
+  }
+  .node-sub {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #8ec8e8;
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .node.light .node-sub { color: var(--muted); }
+
+  /* ── CONNECTOR ── */
+  .connector {
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .connector::after {
+    content: '';
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 10px solid var(--accent2);
+    position: absolute;
+    bottom: -1px;
+  }
+
+  /* ── THREE COLUMN SPLIT ── */
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+  }
+  .col-card {
+    border-radius: 14px;
+    padding: 20px 18px 16px;
+    background: var(--card);
+    box-shadow: var(--shadow);
+    border: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .col-card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:4px;
+    border-radius:14px 14px 0 0;
+  }
+  .col-card.genomics::before  { background: var(--gen); }
+  .col-card.trans::before     { background: var(--trans); }
+  .col-card.meta::before      { background: var(--meta); }
+  .col-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .col-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .col-card.genomics h3 { color: var(--gen); }
+  .col-card.trans h3    { color: var(--trans); }
+  .col-card.meta h3     { color: var(--meta); }
+
+  .tool-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .chip {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1.5px solid;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+  }
+  .chip:hover { filter: brightness(0.9); }
+  .genomics .chip { border-color: var(--gen);   color: var(--gen);   background: var(--gen-light); }
+  .trans    .chip { border-color: var(--trans);  color: var(--trans); background: var(--trans-light); }
+  .meta     .chip { border-color: var(--meta);   color: var(--meta);  background: var(--meta-light); }
+
+  /* step labels under col-cards */
+  .step-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-align: center;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* ── HORIZONTAL MERGE BAR ── */
+  .merge-bar {
+    width: 66%;
+    max-width: 600px;
+    height: 2px;
+    background: linear-gradient(to right, var(--gen), var(--trans), var(--meta));
+    border-radius: 2px;
+    position: relative;
+  }
+  .merge-bar::after {
+    content:'';
+    width:0; height:0;
+    border-left:7px solid transparent;
+    border-right:7px solid transparent;
+    border-top:10px solid var(--accent);
+    position:absolute;
+    bottom:-11px; left:50%; transform:translateX(-50%);
+  }
+
+  /* ── HORIZONTAL SPLIT (2 or 3 sub-nodes below a node) ── */
+  .h-split-wrap {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .h-split {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    justify-content: center;
+  }
+  .sub-node {
+    flex: 1;
+    max-width: 280px;
+    border-radius: 12px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    padding: 14px 16px 12px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-align: center;
+  }
+  .sub-node:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+  .sub-node h4 { font-size:0.92rem; font-weight:700; color:var(--text); }
+  .sub-node .node-sub { color:var(--muted); }
+
+  /* ── H CONNECTORS ── */
+  .h-connector-row {
+    width: 66%;
+    max-width: 600px;
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    height: 32px;
+  }
+  .h-connector-row::before {
+    content:'';
+    position:absolute;
+    top:0; left:16.5%; right:16.5%;
+    height:2px;
+    background: linear-gradient(to right, var(--gen), var(--trans), var(--meta));
+  }
+  .h-leg {
+    width:2px;
+    height:100%;
+    background: var(--accent);
+    position:relative;
+  }
+  .h-leg::after {
+    content:'';
+    width:0;height:0;
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-top:8px solid var(--accent);
+    position:absolute;
+    bottom:-1px; left:50%; transform:translateX(-50%);
+  }
+
+  /* ── RESULT NODE ── */
+  .result-node {
+    background: linear-gradient(135deg, #0d3a5a, #1a5f8a);
+    color:#fff;
+    border-radius:12px;
+    padding:16px 48px;
+    font-size:1.1rem;
+    font-weight:700;
+    box-shadow: 0 6px 30px rgba(13,33,55,0.3);
+    letter-spacing:0.5px;
+    cursor:pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .result-node:hover { transform:translateY(-3px); box-shadow:0 12px 40px rgba(13,33,55,0.35); }
+
+  /* ── SPACERS ── */
+  .gap-sm { height: 16px; }
+  .gap-md { height: 28px; }
+  .gap-lg { height: 40px; }
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position: fixed;
+    background: var(--navy);
+    color: #e8f4ff;
+    border: 1.5px solid var(--accent);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 0.85rem;
+    max-width: 260px;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.18s, transform 0.18s;
+  }
+  .tooltip.show { opacity:1; transform:translateY(0); }
+  .tooltip h4 { font-size:0.92rem; font-weight:700; color:#7fc8ff; margin-bottom:6px; }
+  .tooltip ul { padding-left:14px; }
+  .tooltip li { margin-bottom:3px; line-height:1.4; }
+
+  /* ── HIGHLIGHT PULSE ── */
+  @keyframes pulse-border {
+    0%   { box-shadow: 0 0 0 0 rgba(42,122,191,0.5); }
+    70%  { box-shadow: 0 0 0 10px rgba(42,122,191,0); }
+    100% { box-shadow: 0 0 0 0 rgba(42,122,191,0); }
+  }
+  .pulsing { animation: pulse-border 1.2s ease-out 2; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--navy);
+    color: #7a9ab8;
+    text-align: right;
+    padding: 12px 36px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-top: 2px solid var(--navy2);
+  }
+  footer span { color: #8ec8ff; }
+
+  /* ── FADE-IN ANIMATION ── */
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(18px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .anim { opacity:0; animation: fadeUp 0.5s ease forwards; }
+  .anim:nth-child(1)  { animation-delay: 0.05s; }
+  .anim:nth-child(2)  { animation-delay: 0.12s; }
+  .anim:nth-child(3)  { animation-delay: 0.19s; }
+  .anim:nth-child(4)  { animation-delay: 0.26s; }
+  .anim:nth-child(5)  { animation-delay: 0.33s; }
+  .anim:nth-child(6)  { animation-delay: 0.40s; }
+  .anim:nth-child(7)  { animation-delay: 0.47s; }
+  .anim:nth-child(8)  { animation-delay: 0.54s; }
+  .anim:nth-child(9)  { animation-delay: 0.61s; }
+  .anim:nth-child(10) { animation-delay: 0.68s; }
+  .anim:nth-child(11) { animation-delay: 0.75s; }
+  .anim:nth-child(12) { animation-delay: 0.82s; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-logo">
+    <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="hbg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#0a1628"/>
+          <stop offset="100%" stop-color="#001a2e"/>
+        </radialGradient>
+      </defs>
+      <circle cx="60" cy="60" r="58" fill="url(#hbg)" stroke="#1a4a6e" stroke-width="1.5"/>
+      <!-- Genomics sector -->
+      <path d="M60,60 L10,25 A55,55 0 0,1 60,5 Z" fill="#1a6fa8" opacity="0.88"/>
+      <!-- Transcriptomics sector -->
+      <path d="M60,60 L60,5 A55,55 0 0,1 110,25 Z" fill="#0e8a7a" opacity="0.88"/>
+      <!-- Metagenomics sector -->
+      <path d="M60,60 L10,25 A55,55 0 0,0 110,25 Z" fill="#7b3fa0" opacity="0.85"/>
+      <!-- dividers -->
+      <line x1="60" y1="60" x2="10" y2="25" stroke="#fff" stroke-width="0.8" opacity="0.35"/>
+      <line x1="60" y1="60" x2="110" y2="25" stroke="#fff" stroke-width="0.8" opacity="0.35"/>
+      <line x1="60" y1="60" x2="60" y2="5" stroke="#fff" stroke-width="0.8" opacity="0.35"/>
+      <!-- DNA helix in Genomics sector -->
+      <g transform="translate(24,15) rotate(-20)">
+        <path d="M0,0 Q5,6 0,12 Q-5,18 0,24" stroke="#7fc8f8" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M9,0 Q4,6 9,12 Q14,18 9,24" stroke="#aaddff" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <line x1="0" y1="6" x2="9" y2="6" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
+        <line x1="0" y1="12" x2="9" y2="12" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
+        <line x1="0" y1="18" x2="9" y2="18" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
+      </g>
+      <!-- RNA wave in Transcriptomics sector -->
+      <g transform="translate(68,13)">
+        <path d="M0,8 Q7,0 14,8 Q21,16 28,8" stroke="#5efcd8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M0,18 Q7,10 14,18 Q21,26 28,18" stroke="#a8ffe8" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <circle cx="0" cy="8" r="2.5" fill="#5efcd8"/>
+        <circle cx="14" cy="8" r="2.5" fill="#5efcd8"/>
+        <circle cx="28" cy="8" r="2.5" fill="#5efcd8"/>
+      </g>
+      <!-- Microbial net in Meta sector -->
+      <g transform="translate(37,72)">
+        <line x1="12" y1="0" x2="0" y2="16" stroke="#d4a8ff" stroke-width="1.5" opacity="0.9"/>
+        <line x1="12" y1="0" x2="24" y2="16" stroke="#d4a8ff" stroke-width="1.5" opacity="0.9"/>
+        <line x1="12" y1="0" x2="12" y2="22" stroke="#d4a8ff" stroke-width="1.5" opacity="0.9"/>
+        <circle cx="12" cy="0" r="5" fill="#c77dff" stroke="#fff" stroke-width="1"/>
+        <circle cx="0" cy="16" r="3.5" fill="#9d4edd" stroke="#fff" stroke-width="0.8"/>
+        <circle cx="24" cy="16" r="3.5" fill="#9d4edd" stroke="#fff" stroke-width="0.8"/>
+        <circle cx="12" cy="22" r="4" fill="#7b2d8b" stroke="#fff" stroke-width="0.8"/>
+      </g>
+      <!-- Hub -->
+      <circle cx="60" cy="60" r="13" fill="#041020" stroke="#4a9fd4" stroke-width="1.5"/>
+      <text x="60" y="57" text-anchor="middle" font-family="Arial Black" font-size="6" fill="#fff" font-weight="bold">MGN</text>
+      <text x="60" y="67" text-anchor="middle" font-family="Arial" font-size="4" fill="#8ec8ff">ANALYSER</text>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>MGN Analyser</h1>
+    <p>Integrated Bioinformatics Platform &nbsp;•&nbsp; CPMB &amp; B., TNAU</p>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <a class="active" onclick="showSection('home')">Home</a>
+  <a onclick="showSection('tools')">Tools</a>
+  <a onclick="showSection('home')">Pre-Processing</a>
+  <a onclick="showSection('home')">Assembly</a>
+  <a onclick="showSection('home')">Analysis</a>
+  <a class="pipeline-tab" onclick="showSection('pipeline')">Pipeline</a>
+</nav>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- MAIN -->
+<main>
+
+  <!-- ═══ HOME / PIPELINE MAP ═══ -->
+  <div id="section-home">
+    <div class="section-title">Interactive Workflow Overview</div>
+
+    <div class="pipeline-canvas" id="pipeline-canvas">
+
+      <!-- RAW READS -->
+      <div class="anim node dark" style="min-width:280px;"
+           data-tip="raw" onclick="pulse(this)">
+        Raw Reads (FASTQ)
+        <div class="node-sub">Input: paired-end / single-end reads</div>
+      </div>
+      <div class="anim connector" style="height:32px; width:2px;"></div>
+
+      <!-- PRE-PROCESSING -->
+      <div class="anim node dark" style="min-width:340px;"
+           data-tip="preproc" onclick="pulse(this)">
+        Pre-Processing
+        <div class="node-sub">Quality Control &amp; Trimming</div>
+      </div>
+
+      <!-- H-CONNECTOR DOWN TO 3 COLS -->
+      <div class="anim" style="width:100%; max-width:900px; display:flex; flex-direction:column; align-items:center; gap:0;">
+        <!-- top horizontal bar -->
+        <div style="display:flex; justify-content:space-between; width:66%; max-width:600px; height:32px; position:relative;">
+          <div style="position:absolute; top:0; left:16.5%; right:16.5%; height:2px; background:linear-gradient(to right,var(--gen),var(--trans),var(--meta));"></div>
+          <div style="width:2px; height:100%; background:var(--gen); position:relative;">
+            <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--gen);position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);"></div>
+          </div>
+          <div style="width:2px; height:100%; background:var(--trans); position:relative;">
+            <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--trans);position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);"></div>
+          </div>
+          <div style="width:2px; height:100%; background:var(--meta); position:relative;">
+            <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--meta);position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- THREE DOMAIN CARDS -->
+      <div class="anim three-col" style="max-width:900px;">
+
+        <div class="col-card trans" data-tip="trans" onclick="pulse(this)">
+          <h3>Transcriptomics</h3>
+          <div class="tool-chips">
+            <span class="chip">Trinity</span>
+            <span class="chip">STAR</span>
+            <span class="chip">HISAT2</span>
+            <span class="chip">Bowtie2</span>
+            <span class="chip">RNA-SPAdes</span>
+            <span class="chip">RSEM</span>
+          </div>
+          <div class="step-label">Assembly &amp; Mapping</div>
+        </div>
+
+        <div class="col-card genomics" data-tip="gen" onclick="pulse(this)">
+          <h3>Genomics</h3>
+          <div class="tool-chips">
+            <span class="chip">SPAdes</span>
+            <span class="chip">HiSat2</span>
+            <span class="chip">BWA</span>
+            <span class="chip">Bowtie2</span>
+            <span class="chip">Hifiasm</span>
+            <span class="chip">Velvet</span>
+          </div>
+          <div class="step-label">Assembly &amp; Mapping</div>
+        </div>
+
+        <div class="col-card meta" data-tip="meta" onclick="pulse(this)">
+          <h3>Metagenomics</h3>
+          <div class="tool-chips">
+            <span class="chip">MetaSPAdes</span>
+            <span class="chip">MEGAHIT</span>
+            <span class="chip">QUAST</span>
+            <span class="chip">Kraken2</span>
+            <span class="chip">Prodigal</span>
+          </div>
+          <div class="step-label">Assembly &amp; Classification</div>
+        </div>
+
+      </div>
+
+      <!-- DOWN CONNECTOR FROM 3 COLS -->
+      <div class="anim" style="width:100%; max-width:900px; display:flex; flex-direction:column; align-items:center;">
+        <div style="display:flex; justify-content:space-between; width:66%; max-width:600px; height:32px; position:relative;">
+          <div style="position:absolute; top:100%; left:16.5%; right:16.5%; height:2px; background:linear-gradient(to right,var(--gen),var(--trans),var(--meta));"></div>
+          <div style="width:2px; height:100%; background:var(--trans);"></div>
+          <div style="width:2px; height:100%; background:var(--gen);"></div>
+          <div style="width:2px; height:100%; background:var(--meta);"></div>
+        </div>
+      </div>
+
+      <!-- SECOND ROW: QC/Quant | Mapping | Func Annot -->
+      <div class="anim three-col" style="max-width:900px; margin-top:2px;">
+
+        <div class="sub-node" data-tip="qc" onclick="pulse(this)">
+          <h4>Quality &amp; Quantification</h4>
+          <div class="node-sub">TransDecoder · BUSCO · RSEM</div>
+        </div>
+
+        <div class="sub-node" data-tip="mapping" onclick="pulse(this)">
+          <h4>Mapping &amp; Variants</h4>
+          <div class="node-sub">BWA · SAMtools · STAR</div>
+        </div>
+
+        <div class="sub-node" data-tip="annot" onclick="pulse(this)">
+          <h4>Functional Annotation</h4>
+          <div class="node-sub">BLAST · InterProScan · GO</div>
+        </div>
+
+      </div>
+
+      <!-- MERGE DOWN TO ANALYSIS -->
+      <div class="anim" style="width:100%; max-width:900px; display:flex; flex-direction:column; align-items:center;">
+        <div style="display:flex; justify-content:space-between; width:66%; max-width:600px; height:28px; position:relative;">
+          <div style="width:2px; height:100%; background:var(--trans);"></div>
+          <div style="width:2px; height:100%; background:var(--gen);"></div>
+          <div style="width:2px; height:100%; background:var(--meta);"></div>
+        </div>
+        <div class="merge-bar anim"></div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- ANALYSIS & ANNOTATION -->
+      <div class="anim node dark" style="min-width:380px; background:linear-gradient(135deg,#0d2d4a,#1a4a6e);"
+           data-tip="analysis" onclick="pulse(this)">
+        Analysis &amp; Annotation
+        <div class="node-sub">BLAST · GO Mapping · InterProScan · Kraken2</div>
+      </div>
+      <div class="anim connector" style="height:32px; width:2px;"></div>
+
+      <!-- BOTTOM THREE -->
+      <div class="anim three-col" style="max-width:900px;">
+
+        <div class="sub-node" data-tip="assembly2" onclick="pulse(this)">
+          <h4>Assembly</h4>
+          <div class="node-sub">Contig Generation</div>
+        </div>
+
+        <div class="sub-node" data-tip="genepred" onclick="pulse(this)">
+          <h4>Gene Prediction</h4>
+          <div class="node-sub">Prodigal · MetaGeneMark</div>
+        </div>
+
+        <div class="sub-node" data-tip="taxo" onclick="pulse(this)">
+          <h4>Taxonomic Classification</h4>
+          <div class="node-sub">Kraken2 · Kaiju</div>
+        </div>
+
+      </div>
+
+      <!-- DOWN TO RESULTS -->
+      <div class="anim" style="width:100%; max-width:900px; display:flex; flex-direction:column; align-items:center;">
+        <div style="display:flex; justify-content:space-between; width:66%; max-width:600px; height:28px; position:relative;">
+          <div style="width:2px; height:100%; background:var(--gen);"></div>
+          <div style="width:2px; height:100%; background:var(--accent2);"></div>
+          <div style="width:2px; height:100%; background:var(--meta);"></div>
+        </div>
+        <div class="merge-bar anim"></div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- RESULTS -->
+      <div class="anim result-node" data-tip="results" onclick="pulse(this)">
+        Results &amp; Reports
+      </div>
+
+    </div><!-- /pipeline-canvas -->
+  </div>
+
+  <!-- ═══ PIPELINE SECTION ═══ -->
+  <div id="section-pipeline" style="display:none;">
+    <div class="section-title">End-to-End Pipelines</div>
+    <div class="three-col" style="max-width:860px; margin:0 auto;">
+
+      <div class="col-card genomics" onclick="pulse(this)" style="cursor:pointer;">
+        <h3>Genomic Pipeline</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">Complete genome assembly and analysis workflow</p>
+        <div class="tool-chips">
+          <span class="chip">Denovo</span>
+          <span class="chip">Reference</span>
+        </div>
+        <div style="margin-top:12px; font-size:0.8rem; color:var(--muted);">
+          FastQC → Trimmomatic → SPAdes/BWA → Annotation → BLAST
+        </div>
+      </div>
+
+      <div class="col-card trans" onclick="pulse(this)" style="cursor:pointer;">
+        <h3>Transcriptomic Pipeline</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">RNA-seq assembly, mapping and expression analysis</p>
+        <div class="tool-chips">
+          <span class="chip">Denovo</span>
+          <span class="chip">Reference</span>
+        </div>
+        <div style="margin-top:12px; font-size:0.8rem; color:var(--muted);">
+          FastP → Trinity/STAR → TransDecoder → RSEM → GO Mapping
+        </div>
+      </div>
+
+      <div class="col-card meta" onclick="pulse(this)" style="cursor:pointer;">
+        <h3>Metagenomic Pipeline</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">Microbial community profiling and functional annotation</p>
+        <div class="tool-chips">
+          <span class="chip">16S rRNA</span>
+          <span class="chip">Shotgun</span>
+        </div>
+        <div style="margin-top:12px; font-size:0.8rem; color:var(--muted);">
+          Trimgalore → MEGAHIT → Prodigal → Kraken2 → Krona
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Developed by <span>Anitha Ravichandran, Akhamsha and Nivetha V</span> &nbsp;|&nbsp;
+  Corresponding author: <span>N Saranya</span> &nbsp;|&nbsp; CPMB &amp; B, TNAU
+</footer>
+
+<script>
+// ── Tooltip data ──────────────────────────────────────────
+const tips = {
+  raw:       { title: 'Raw Reads (FASTQ)',        items: ['Paired-end or single-end sequencing reads', 'Illumina, PacBio, Nanopore supported', 'Input to pre-processing step'] },
+  preproc:   { title: 'Pre-Processing',           items: ['FastQC — quality report', 'FastP — adapter trimming & QC', 'Trimmomatic — read cleaning', 'Trimgalore — bisulfite-seq trimming'] },
+  trans:     { title: 'Transcriptomics Assembly', items: ['Trinity — de-novo assembly', 'STAR / HISAT2 — splice-aware mapping', 'RNA-SPAdes — RNA genome assembly', 'RSEM — expression estimation'] },
+  gen:       { title: 'Genomics Assembly',        items: ['SPAdes / Velvet / Hifiasm / Abyss', 'Bowtie2 / BWA — reference mapping', 'SAMtools — BAM handling'] },
+  meta:      { title: 'Metagenomics Assembly',    items: ['MetaSPAdes / MEGAHIT — assembly', 'QUAST — assembly statistics', 'Kraken2 — taxonomic classification', 'Prodigal — gene prediction'] },
+  qc:        { title: 'Quality & Quantification', items: ['BUSCO — assembly completeness', 'TransDecoder — ORF prediction', 'RSEM — transcript quantification'] },
+  mapping:   { title: 'Mapping & Variants',       items: ['BWA / Bowtie2 — read alignment', 'STAR — RNA-seq alignment', 'SAMtools — variant calling support'] },
+  annot:     { title: 'Functional Annotation',    items: ['BLAST — sequence similarity search', 'InterProScan — domain annotation', 'GO Mapping — gene ontology'] },
+  analysis:  { title: 'Analysis & Annotation',    items: ['BLAST — homology search', 'GO Mapping — functional categories', 'InterProScan — protein families', 'Kraken2 — taxonomic profiles'] },
+  assembly2: { title: 'Assembly',                 items: ['Contig / scaffold generation', 'Quality assessment with QUAST', 'N50, coverage statistics'] },
+  genepred:  { title: 'Gene Prediction',          items: ['Prodigal — prokaryotic gene calls', 'MetaGeneMark — metagenome gene calls'] },
+  taxo:      { title: 'Taxonomic Classification', items: ['Kraken2 — k-mer based classification', 'Kaiju — protein-level classification', 'Krona — interactive visualization'] },
+  results:   { title: 'Results & Reports',        items: ['Annotated sequences & tables', 'Expression matrices', 'Taxonomic abundance profiles', 'HTML / PDF reports'] }
+};
+
+const tooltip = document.getElementById('tooltip');
+
+document.querySelectorAll('[data-tip]').forEach(el => {
+  el.addEventListener('mouseenter', e => {
+    const key = el.dataset.tip;
+    if (!tips[key]) return;
+    const t = tips[key];
+    tooltip.innerHTML = `<h4>${t.title}</h4><ul>${t.items.map(i=>`<li>${i}</li>`).join('')}</ul>`;
+    tooltip.classList.add('show');
+    posTooltip(e);
+  });
+  el.addEventListener('mousemove', posTooltip);
+  el.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+});
+
+function posTooltip(e) {
+  let x = e.clientX + 18, y = e.clientY + 12;
+  if (x + 270 > window.innerWidth) x = e.clientX - 275;
+  if (y + 200 > window.innerHeight) y = e.clientY - 180;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
+
+// ── Pulse on click ────────────────────────────────────────
+function pulse(el) {
+  el.classList.remove('pulsing');
+  void el.offsetWidth;
+  el.classList.add('pulsing');
+  el.addEventListener('animationend', () => el.classList.remove('pulsing'), { once: true });
+}
+
+// ── Section switching ─────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('main > div').forEach(d => d.style.display = 'none');
+  document.getElementById('section-' + id).style.display = '';
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+}
+</script>
+</body>
+</html>
