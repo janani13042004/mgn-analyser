@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=NexaHub
-Comment=Start GenArc GUI
-Exec=python3 genarc.py
-Terminal=false
-Type=Application
-

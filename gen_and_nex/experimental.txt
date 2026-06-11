@@ -1,7 +1,0 @@
-Sample	Condition
-control_r1	Control
-control_r2	Control
-control_r3	Control
-salt_r1	Salt
-salt_r2	Salt
-salt_r3	Salt
